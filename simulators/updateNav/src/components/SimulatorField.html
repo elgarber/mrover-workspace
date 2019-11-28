@@ -208,7 +208,6 @@ export default {
             this.set({ ar_tag_state, gates });
         };
 
-
         const point_in_triangle = (point, crossbar, coords) => {
             const sign = (point, end0, end1) => {
                 return (point.x - end1.x) * (end0.y - end1.y) - (end0.x - end1.x) * (point.y - end1.y);
@@ -572,7 +571,10 @@ export default {
 
         const update = () => {
             recompute_ar_tag_visibility();
-            recompute_gate_visibility();
+            let ar_tag_state = this.get("ar_tag_state");
+            if (ar_tag_state[0].distance === -1){
+                recompute_gate_visibility();
+            }
             recompute_obstacle_visibility();
             draw();
         };
