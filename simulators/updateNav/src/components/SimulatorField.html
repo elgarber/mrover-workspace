@@ -149,15 +149,24 @@ export default {
             ];
 
             for (let i = 0; i < gates.length; i++) {
+
                 gates[i][0].detected = false;
                 gates[i][1].detected = false;
 
                 const rover_bearing = odom.bearing_deg * Math.PI/180;
-                const { dist, bearing } = dist_and_bearing(
+
+                const { dist:dist, bearing:bearing } = dist_and_bearing(
                     to_decimal(odom), to_decimal(gates[i][0]));
 
-                const { dist_1, bearing_1 } = dist_and_bearing(
+                const { dist:dist1, bearing:bearing_1 } = dist_and_bearing(
                     to_decimal(odom), to_decimal(gates[i][1]));
+
+                if ((dist1) < (dist)) {
+                    console.log("SWITCHING!!!")
+                    let post = gates[i][0];
+                    gates[i][0] = gates[i][1];
+                    gates[i][1] = post;
+                }
 
                 console.log("post 0");
                 // console.log(`testing a ball at ${dist} meters by ${bearing} radians`);
@@ -175,32 +184,13 @@ export default {
                 // console.log(Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2);
                 // console.log(dist_1 < ROVER_DEPTH_OF_VIEW);
                 // console.log(`testing a ball at ${dist} meters by ${bearing} radians`);
-                if (Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2 && dist_1 < ROVER_DEPTH_OF_VIEW) {
-                    console.log("close enough to rover!!");
-
+                if (Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2 && dist1 < ROVER_DEPTH_OF_VIEW) {
                     gates[i][1].detected = true;
-                    gate_detected_idx = i;
 
-                    if (!ar_tag_state[0].detected)
-                    {
-                        let post = gates[i][0];
-                        gates[i][0] = gates[i][1];
-                        gates[i][1] = post;
-
-                        console.log("setting state in 0");
-                        ar_tag_state[0] = {
-                            distance: dist_1,
-                            bearing: (bearing_1 - rover_bearing) * 180/Math.PI
-                        };
-                    }
-                    else
-                    {
-                        console.log("in here");
-                        ar_tag_state[1] = {
-                            distance: dist_1,
-                            bearing: (bearing_1 - rover_bearing) * 180/Math.PI
-                        };
-                    }
+                    ar_tag_state[1] = {
+                        distance: dist1,
+                        bearing: (bearing_1 - rover_bearing) * 180/Math.PI
+                    };
                 }
 
                 if (gate_detected_idx != -1)
