@@ -172,8 +172,8 @@ export default {
                 }
 
                 console.log("post 1");
-                console.log(Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2);
-                console.log(dist_1 < ROVER_DEPTH_OF_VIEW);
+                // console.log(Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2);
+                // console.log(dist_1 < ROVER_DEPTH_OF_VIEW);
                 // console.log(`testing a ball at ${dist} meters by ${bearing} radians`);
                 if (Math.abs(bearing_1 - rover_bearing) < ROVER_FIELD_OF_VIEW/2 && dist_1 < ROVER_DEPTH_OF_VIEW) {
                     console.log("close enough to rover!!");
@@ -189,16 +189,16 @@ export default {
 
                         console.log("setting state in 0");
                         ar_tag_state[0] = {
-                            distance: dist,
-                            bearing: (bearing - rover_bearing) * 180/Math.PI
+                            distance: dist_1,
+                            bearing: (bearing_1 - rover_bearing) * 180/Math.PI
                         };
                     }
                     else
                     {
                         console.log("in here");
                         ar_tag_state[1] = {
-                            distance: dist,
-                            bearing: (bearing - rover_bearing) * 180/Math.PI
+                            distance: dist_1,
+                            bearing: (bearing_1 - rover_bearing) * 180/Math.PI
                         };
                     }
                 }
@@ -469,7 +469,7 @@ export default {
                 const posts = gates[i];
                 const bcoords_1 = this.to_canvas(this.projection(to_decimal(posts[0])));
 
-                ctx.fillStyle = 'pink';
+                ctx.fillStyle = 'lightblue';
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 1;
 
@@ -489,7 +489,7 @@ export default {
 
                 const bcoords_2 = this.to_canvas(this.projection(to_decimal(posts[1])));
 
-                ctx.fillStyle = 'pink';
+                ctx.fillStyle = 'lightblue';
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 1;
 
@@ -575,6 +575,7 @@ export default {
         const update = () => {
             recompute_ar_tag_visibility();
             let ar_tag_state = this.get("ar_tag_state");
+
             if (ar_tag_state[0].distance === -1){
                 recompute_gate_visibility();
             }
