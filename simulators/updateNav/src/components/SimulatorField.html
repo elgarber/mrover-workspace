@@ -154,7 +154,6 @@ export default {
                 gates[i][1].detected = false;
 
                 const rover_bearing = odom.bearing_deg * Math.PI/180;
-
                 const { dist:dist, bearing:bearing } = dist_and_bearing(
                     to_decimal(odom), to_decimal(gates[i][0]));
 
@@ -544,13 +543,13 @@ export default {
             else if (draw_mode === GATE_MODE) {
                 let gates = this.get("gates");
                 let angle = this.get("angle");
+
                 console.log("add gate");
 
                 let post_1 = to_dms({lat, lon});
                 post_1.detected = false;
 
                 let post_2 = this.shift_x_meters({lat, lon}, 3, angle);
-
                 gates.push([post_1, post_2]);
                 this.set({ gates });
             }
