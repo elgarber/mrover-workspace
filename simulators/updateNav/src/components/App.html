@@ -262,7 +262,8 @@
             handleDownloadTest: function(event) {
                 var test_case_data = JSON.stringify({ waypoints: app._state.waypoints,
                                                       rocks: app._state.rocks,
-                                                      ar_tags: app._state.ar_tags },
+                                                      ar_tags: app._state.ar_tags,
+                                                      gates: app._state.gates },
                                                     null,
                                                     4)
                 var filename = document.getElementById('input-filename').value + ".json";
