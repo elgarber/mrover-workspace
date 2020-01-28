@@ -7,6 +7,7 @@
 #include "search/searchStateMachine.hpp"
 #include "obstacle_avoidance/simpleAvoidance.hpp"
 
+
 using namespace std;
 using namespace rover_msgs;
 
@@ -36,6 +37,13 @@ public:
 
     void updateRoverStatus( TargetList targetList );
 
+    void updateRoverStatus( RadioSignalStrength radioSignalStrength );
+
+<<<<<<< HEAD
+    void updateRoverStatus( RepeaterDropComplete repeaterDropComplete );
+
+=======
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
     void updateCompletedPoints( );
 
     void updateObstacleAngle( double bearing );
@@ -43,6 +51,12 @@ public:
     void updateObstacleDistance( double distance );
 
     void updateObstacleElements( double bearing, double distance );
+
+    void updateRadioRepeaterDrops( );
+
+    void updateRadioRepeaterComplete( );
+
+    void updateRadioRepeaterDrops( );
 
     void setSearcher(SearchType type);
 
@@ -61,6 +75,8 @@ private:
     NavState executeTurn();
 
     NavState executeDrive();
+
+    NavState executeRepeaterWait();
 
     NavState executeSearch();
 
@@ -98,6 +114,15 @@ private:
 
     // Number of waypoints completed.
     unsigned mCompletedWaypoints;
+
+    // Number of radio repeaters dropped.
+    unsigned mRadioRepeaterDrops;
+
+    // Bool of whether radio repeater has been dropped.
+    bool mRepeaterDropComplete = false;
+
+    // Number of radio repeaters dropped
+    unsigned mRadioRepeaterDrops;
 
     // Indicates if the state changed on a given iteration of run.
     bool mStateChanged;

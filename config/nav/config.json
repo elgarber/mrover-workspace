@@ -43,7 +43,15 @@
 	"lcmChannels":
 	{
 		"navStatusChannel": "/nav_status",
+		"RepeaterDropInitChannel": "/rr_drop_init",
+		"RepeaterDropCompleteChannel": "/rr_drop_complete",
 		"joystickChannel": "/autonomous"
+	},
+
+	"radioRepeater":
+	{
+		"lowSignal": 30.0,
+		"threshold": 5
 	},
 
 	"search":

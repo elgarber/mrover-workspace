@@ -66,6 +66,29 @@ public:
         mStateMachine->updateRoverStatus( *targetListIn );
     }
 
+    // Sends the radio lcm message to the state machine.
+    void RadioSignalStrength(
+        const lcm::ReceiveBuffer* receiveBuffer,
+        const string& channel,
+        const RadioSignalStrength* signalIn
+        )
+    {
+        mStateMachine->updateRoverStatus( *signalIn );
+    }
+
+<<<<<<< HEAD
+    // Updates Radio Repeater bool in state machine.
+    void RepeaterDropComplete(
+        const lcm::ReceiveBuffer* receiveBuffer,
+        const string& channel,
+        const RepeaterDropComplete* completeIn
+        )
+    {
+        mStateMachine->updateRadioRepeaterComplete( );
+    }
+
+=======
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
 private:
     // The state machine to send the lcm messages to.
     StateMachine* mStateMachine;
@@ -88,6 +111,11 @@ int main()
     lcmObject.subscribe( "/course", &LcmHandlers::course, &lcmHandlers );
     lcmObject.subscribe( "/obstacle", &LcmHandlers::obstacle, &lcmHandlers );
     lcmObject.subscribe( "/odometry", &LcmHandlers::odometry, &lcmHandlers );
+    lcmObject.subscribe( "/radio", &LcmHandlers::RadioSignalStrength, &lcmHandlers );
+<<<<<<< HEAD
+    lcmObject.subscribe( "/rr_drop_complete", &LcmHandlers::RepeaterDropComplete, &lcmHandlers );
+=======
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
     lcmObject.subscribe( "/target_list", &LcmHandlers::targetList, &lcmHandlers );
 
     while( lcmObject.handle() == 0 )

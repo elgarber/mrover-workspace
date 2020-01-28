@@ -24,6 +24,15 @@ StateMachine::StateMachine( lcm::LCM& lcmObject )
     , mLcmObject( lcmObject )
     , mTotalWaypoints( 0 )
     , mCompletedWaypoints( 0 )
+<<<<<<< HEAD
+    , mRadioRepeaterDrops ( 0 )
+    , mRepeaterDropComplete ( false )
+=======
+    , mMissedWaypoints( 0 )
+    , mFoundTargets( 0 )
+    , mTotalTargets( 0 )
+    , mRadioRepeaterDrops ( 0 )
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
     , mStateChanged( true )
 {
     ifstream configFile;
@@ -60,6 +69,24 @@ void StateMachine::setSearcher( SearchType type )
 void StateMachine::updateCompletedPoints( )
 {
     mCompletedWaypoints += 1;
+    return;
+}
+
+void StateMachine::updateRadioRepeaterDrops( )
+{
+    mRadioRepeaterDrops += 1;
+    return;
+}
+
+void StateMachine::updateRadioRepeaterComplete( )
+{
+    mRepeaterDropComplete = true;
+    return;
+}
+
+void StateMachine::updateRadioRepeaterDrops( )
+{
+    mRadioRepeaterDrops += 1;
     return;
 }
 
@@ -124,15 +151,23 @@ void StateMachine::run()
                 break;
             }
 
+            case NavState::RadioRepeaterTurn:
             case NavState::Turn:
             {
                 nextState = executeTurn();
                 break;
             }
 
+            case NavState::RadioRepeaterDrive:
             case NavState::Drive:
             {
                 nextState = executeDrive();
+                break;
+            }
+
+            case NavState::RadioRepeaterDrop:
+            {
+                nextState = executeRepeaterWait();
                 break;
             }
 
@@ -250,6 +285,12 @@ void StateMachine::updateRoverStatus( TargetList targetList )
     mNewRoverStatus.target2() = target2;
 } // updateRoverStatus( Target )
 
+// Updates the radio signal strength information of the rover's status.
+void StateMachine::updateRoverStatus( RadioSignalStrength radioSignalStrength )
+{
+    mNewRoverStatus.radio() = radioSignalStrength;
+} // updateRoverStatus( RadioSignalStrength )
+
 // Return true if we want to execute a loop in the state machine, false
 // otherwise.
 bool StateMachine::isRoverReady() const
@@ -257,7 +298,9 @@ bool StateMachine::isRoverReady() const
     return mStateChanged || // internal data has changed
            mPhoebe->updateRover( mNewRoverStatus ) || // external data has changed
            mPhoebe->roverStatus().currentState() == NavState::SearchSpinWait || // continue even if no data has changed
-           mPhoebe->roverStatus().currentState() == NavState::TurnedToTargetWait; // continue even if no data has changed
+           mPhoebe->roverStatus().currentState() == NavState::TurnedToTargetWait || // continue even if no data has changed
+           mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterDrop; // continue even if no data has changed
+
 } // isRoverReady()
 
 // Publishes the current navigation state to the nav status lcm channel.
@@ -309,12 +352,37 @@ NavState StateMachine::executeTurn()
     {
         return NavState::Done;
     }
+    // If we should drop a repeater and have not already, add last
+    // point where connection was good to front of path and turn
+    if ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterTurn &&
+         mPhoebe->isDropRepeater() &&
+<<<<<<< HEAD
+         mRepeaterDropComplete == false &&
+=======
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
+         mRadioRepeaterDrops == 0 )
+    {
+        // TODO: signal drops before first completed waypoint
+        Waypoint way = (mPhoebe->roverStatus().course().waypoints)[mCompletedWaypoints-1];
+        mPhoebe->roverStatus().path().push_front(way);
+        return NavState::RadioRepeaterTurn;
+    }
 
     Odometry& nextPoint = mPhoebe->roverStatus().path().front().odom;
     if( mPhoebe->turn( nextPoint ) )
     {
+        if (mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterTurn)
+        {
+            return NavState::RadioRepeaterDrive;
+        }
         return NavState::Drive;
     }
+<<<<<<< HEAD
+
+=======
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
+    if (mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterTurn)
+        return NavState::RadioRepeaterTurn;
     return NavState::Turn;
 } // executeTurn()
 
@@ -329,9 +397,23 @@ NavState StateMachine::executeDrive()
     const Waypoint& nextWaypoint = mPhoebe->roverStatus().path().front();
     double distance = estimateNoneuclid( mPhoebe->roverStatus().odometry(), nextWaypoint.odom );
 
+    // If we should drop a repeater and have not already, add last
+    // point where connection was good to front of path and turn
+    if ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterDrive &&
+         mPhoebe->isDropRepeater() &&
+         mRepeaterDropComplete == false &&
+         mRadioRepeaterDrops == 0 )
+    {
+        // TODO: signal drops before first completed waypoint
+        Waypoint way = (mPhoebe->roverStatus().course().waypoints)[mCompletedWaypoints-1];
+        mPhoebe->roverStatus().path().push_front(way);
+        return NavState::RadioRepeaterTurn;
+    }
+
     if( isObstacleDetected() && !isWaypointReachable( distance ) )
     {
-        mObstacleAvoidanceStateMachine->updateObstacleElements( getOptimalAvoidanceAngle(), getOptimalAvoidanceDistance() );
+        mObstacleAvoidanceStateMachine->updateObstacleElements( getOptimalAvoidanceAngle(),
+                                                                getOptimalAvoidanceDistance() );
         return NavState::TurnAroundObs;
     }
     DriveStatus driveStatus = mPhoebe->drive( nextWaypoint.odom );
@@ -341,18 +423,55 @@ NavState StateMachine::executeDrive()
         {
             return NavState::SearchSpin;
         }
-        mPhoebe->roverStatus().path().pop();
-        ++mCompletedWaypoints;
-        return NavState::Turn;
+        mPhoebe->roverStatus().path().pop_front();
+        if (mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterDrive)
+        {
+            return NavState::RadioRepeaterDrop;
+        }
+        else {
+            ++mCompletedWaypoints;
+            return NavState::Turn;
+        }
     }
     if( driveStatus == DriveStatus::OnCourse )
     {
+        if (mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterDrive)
+            return NavState::RadioRepeaterDrive;
         return NavState::Drive;
     }
     // if driveStatus == DriveStatus::OffCourse
+     if (mPhoebe->roverStatus().currentState() == NavState::RadioRepeaterDrive)
+        return NavState::RadioRepeaterTurn;
+
     return NavState::Turn;
 } // executeDrive()
 
+// Executes the logic for waiting during a radio repeater drop
+// If the rover is done waiting, it continues the original course.
+// Else the rover keeps waiting.
+NavState StateMachine::executeRepeaterWait( )
+{
+
+<<<<<<< HEAD
+    RepeaterDropInit rr_init;
+    const string& radioRepeaterInitChannel = mRoverConfig[ "lcmChannels" ][ "RepeaterDropInitChannel" ].GetString();
+    mLcmObject.publish( radioRepeaterInitChannel, &rr_init );
+
+    if( mRepeaterDropComplete )
+    {
+        mRadioRepeaterDrops += 1;
+        mRepeaterDropComplete = false;
+=======
+    if( false )
+    {
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
+        return NavState::Turn;
+    }
+    else
+    {
+        return NavState::RadioRepeaterDrop;
+    }
+}
 
 // Gets the string representation of a nav state.
 string StateMachine::stringifyNavState() const
@@ -376,6 +495,9 @@ string StateMachine::stringifyNavState() const
             { NavState::DriveAroundObs, "Drive Around Obstacle" },
             { NavState::SearchTurnAroundObs, "Search Turn Around Obstacle" },
             { NavState::SearchDriveAroundObs, "Search Drive Around Obstacle" },
+            { NavState::RadioRepeaterTurn, "Radio Repeater Turn" },
+            { NavState::RadioRepeaterDrive, "Radio Repeater Drive" },
+            { NavState::RadioRepeaterDrop, "Radio Repeater Drop" },
             { NavState::Unknown, "Unknown" }
         };
 
@@ -404,6 +526,11 @@ bool StateMachine::isWaypointReachable( double distance )
 {
     return isLocationReachable( mPhoebe, mRoverConfig, distance, mRoverConfig["navThresholds"]["waypointDistance"].GetDouble());
 } // isWaypointReachable
+
+// void StateMachine::beginRepeaterDrop()
+// {
+//     mPhoebe->roverStatus().path()
+// }
 
 // TODOS:
 // [drive to target] obstacle and target

@@ -9,6 +9,14 @@
 #include "rover_msgs/Course.hpp"
 #include "rover_msgs/Obstacle.hpp"
 #include "rover_msgs/Odometry.hpp"
+<<<<<<< HEAD
+#include "rover_msgs/RepeaterDropInit.hpp"
+#include "rover_msgs/RepeaterDropComplete.hpp"
+=======
+// #include "rover_msgs/RepeaterDropInit.hpp"
+// #include "rover_msgs/RepeaterDropComplete.hpp"
+>>>>>>> 6a534e5f... [Nav] Added logic for radio repeater drops
+#include "rover_msgs/RadioSignalStrength.hpp"
 #include "rover_msgs/TargetList.hpp"
 #include "rover_msgs/Waypoint.hpp"
 #include "rapidjson/document.h"
@@ -37,6 +45,9 @@ enum class NavState
     DriveAroundObs = 31,
     SearchTurnAroundObs = 32,
     SearchDriveAroundObs = 33,
+    RadioRepeaterTurn = 40,
+    RadioRepeaterDrive = 41,
+    RadioRepeaterDrop = 42,
     Unknown = 255
 }; // AutonState
 
@@ -67,7 +78,8 @@ public:
             Obstacle obstacleIn,
             Odometry odometryIn,
             Target targetIn,
-            Target target2In
+            Target target2In,
+            RadioSignalStrength signalIn
             );
 
         NavState& currentState();
@@ -76,7 +88,7 @@ public:
 
         Course& course();
 
-        queue<Waypoint>& path();
+        deque<Waypoint>& path();
 
         Obstacle& obstacle();
 
@@ -85,6 +97,8 @@ public:
         Target& target();
 
         Target& target2();
+
+        RadioSignalStrength& radio();
 
         unsigned getPathTargets();
 
@@ -103,7 +117,7 @@ public:
         // The rover's current path. The path is initially the same as
         // the rover's course, however, as waypoints are visited, the
         // are removed from the path but not the course.
-        queue<Waypoint> mPath;
+        deque<Waypoint> mPath;
 
         // The rover's current obstacle information from computer
         // vision.
@@ -118,9 +132,11 @@ public:
 
         Target mTarget2;
 
+        // the rover's current signal strength to the base station
+        RadioSignalStrength mSignal;
+
         // Total targets to seach for in the course
         unsigned mPathTargets;
-
     };
 
     Rover( const rapidjson::Document& config, lcm::LCM& lcm_in );
@@ -144,6 +160,10 @@ public:
     PidLoop& bearingPid();
 
     const double longMeterInMinutes() const;
+
+    void updateRepeater( RadioSignalStrength& signal);
+
+    bool isDropRepeater();
 
 private:
     /*************************************************************************/
@@ -178,6 +198,15 @@ private:
 
     // The pid loop for turning.
     PidLoop mBearingPid;
+
+    // Total number of times signal strength dropped below threshold
+    unsigned missedPings = 0;
+
+    // Total number of pings before dropping a radio repeater
+    unsigned lowSignal = 200;     // TODO: I don't actually know this value
+
+    // Total number of pings before dropping a radio repeater
+    unsigned threshold = 5;     // TODO: Tune this value
 
     // The conversion factor from arcminutes to meters. This is based
     // on the rover's current latitude.

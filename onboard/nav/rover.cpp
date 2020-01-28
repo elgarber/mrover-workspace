@@ -32,7 +32,7 @@ Course& Rover::RoverStatus::course()
 } // course()
 
 // Gets a reference to the rover's path.
-queue<Waypoint>& Rover::RoverStatus::path()
+deque<Waypoint>& Rover::RoverStatus::path()
 {
     return mPath;
 } // path()
@@ -59,6 +59,10 @@ Target& Rover::RoverStatus::target2() {
     return mTarget2;
 }
 
+RadioSignalStrength& Rover::RoverStatus::radio() {
+    return mSignal;
+}
+
 unsigned Rover::RoverStatus::getPathTargets()
 {
   return mPathTargets;
@@ -74,12 +78,12 @@ Rover::RoverStatus& Rover::RoverStatus::operator=( Rover::RoverStatus& newRoverS
 
     while( !mPath.empty() )
     {
-        mPath.pop();
+        mPath.pop_front();
     }
     for( int courseIndex = 0; courseIndex < mCourse.num_waypoints; ++courseIndex )
     {
         auto &wp = mCourse.waypoints[ courseIndex ];
-        mPath.push( wp );
+        mPath.push_back( wp );
         if (wp.search) {
             ++mPathTargets;
         }
@@ -88,6 +92,7 @@ Rover::RoverStatus& Rover::RoverStatus::operator=( Rover::RoverStatus& newRoverS
     mOdometry = newRoverStatus.odometry();
     mTarget1 = newRoverStatus.target();
     mTarget2 = newRoverStatus.target2();
+    mSignal = newRoverStatus.radio();
     return *this;
 } // operator=
 
@@ -237,8 +242,11 @@ bool Rover::updateRover( RoverStatus newRoverStatus )
             mRoverStatus.obstacle() = newRoverStatus.obstacle();
             mRoverStatus.odometry() = newRoverStatus.odometry();
             mRoverStatus.target() = newRoverStatus.target();
+            mRoverStatus.radio() = newRoverStatus.radio();
+            updateRepeater(mRoverStatus.radio());
             return true;
         }
+
         return false;
     }
 
@@ -265,6 +273,15 @@ const double Rover::longMeterInMinutes() const
     return mLongMeterInMinutes;
 }
 
+void Rover::updateRepeater(RadioSignalStrength& radioSignal)
+{
+    (radioSignal.signal_strength <= mRoverConfig[ "radioRepeater" ][ "lowSignal" ].GetDouble()) ? missedPings += 1 : missedPings = 0;
+}
+
+bool Rover::isDropRepeater()
+{
+    return (missedPings >= mRoverConfig[ "radioRepeater" ][ "threshold" ].GetDouble());
+}
 // Gets the rover's status object.
 Rover::RoverStatus& Rover::roverStatus()
 {
