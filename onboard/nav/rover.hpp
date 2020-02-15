@@ -118,7 +118,7 @@ public:
 
         Target& target2();
 
-        RadioSignalStrength& radio();
+        RadioSignalStrength& radioSignal();
 
         unsigned getPathTargets();
 
@@ -183,10 +183,6 @@ public:
 
     const double longMeterInMinutes() const;
 
-    void updateRepeater( RadioSignalStrength& signal);
-
-    bool isTimeToDropRepeater();
-
 private:
     /*************************************************************************/
     /* Private Member Functions */
@@ -220,9 +216,6 @@ private:
 
     // The pid loop for turning.
     PidLoop mBearingPid;
-
-    // If it is time to drop a radio repeater
-    bool mTimeToDropRepeater;
 
     // The conversion factor from arcminutes to meters. This is based
     // on the rover's current latitude.
