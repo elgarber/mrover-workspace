@@ -46,9 +46,9 @@ public:
 
     void updateObstacleElements( double bearing, double distance );
 
-    void updateRepeaterComplete( );
+    void updateRepeaterComplete();
 
-    void setSearcher(SearchType type);
+    void setSearcher( SearchType type );
 
 private:
     /*************************************************************************/
@@ -88,6 +88,10 @@ private:
 
     void addRepeaterDropPoint();
 
+    void updateRepeaterDropWaypoint();
+
+    void lowRadioSignalStrengthTime();
+
     /*************************************************************************/
     /* Private Member Variables */
     /*************************************************************************/
@@ -111,6 +115,12 @@ private:
 
     // Bool of whether radio repeater has been dropped.
     bool mRepeaterDropComplete = false;
+
+    // Bool of whether it is time to drop repeater.
+    bool mIsTimeToDropRepeater = false;
+
+    // Waypoint object for radio repeater drop.
+    Waypoint mRepeaterDropWaypoint;
 
     // Indicates if the state changed on a given iteration of run.
     bool mStateChanged;

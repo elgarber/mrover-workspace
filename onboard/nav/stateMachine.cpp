@@ -61,13 +61,11 @@ void StateMachine::setSearcher( SearchType type )
 void StateMachine::updateCompletedPoints( )
 {
     mCompletedWaypoints += 1;
-    return;
 }
 
 void StateMachine::updateRepeaterComplete( )
 {
     mRepeaterDropComplete = true;
-    return;
 }
 
 // Allows outside objects to set the original obstacle angle
@@ -97,6 +95,7 @@ void StateMachine::updateObstacleElements( double bearing, double distance )
 // Will call the corresponding function based on the current state.
 void StateMachine::run()
 {
+
     if( isRoverReady() )
     {
         publishNavState();
@@ -268,7 +267,7 @@ void StateMachine::updateRoverStatus( TargetList targetList )
 // Updates the radio signal strength information of the rover's status.
 void StateMachine::updateRoverStatus( RadioSignalStrength radioSignalStrength )
 {
-    mNewRoverStatus.radio() = radioSignalStrength;
+    mNewRoverStatus.radioSignal() = radioSignalStrength;
 } // updateRoverStatus( RadioSignalStrength )
 
 // Return true if we want to execute a loop in the state machine, false
@@ -295,15 +294,16 @@ void StateMachine::publishNavState() const
 } // publishNavState()
 
 // Executes the logic for off. If the rover is turned on, it updates
-// the roverStatus. If the course is empty, the rover is done  with
-// the course otherwise it will turn to the first waypoing. Else the
-// rover is still off.
+// the roverStatus and repeater drop point. If the course is empty,
+// the rover is done  with the course otherwise it will turn to the
+// first waypoing. Else the rover is still off.
 NavState StateMachine::executeOff()
 {
     if( mPhoebe->roverStatus().autonState().is_auton )
     {
         mCompletedWaypoints = 0;
         mTotalWaypoints = mPhoebe->roverStatus().course().num_waypoints;
+        mRepeaterDropWaypoint.odom = mPhoebe->roverStatus().odometry();
 
         if( !mTotalWaypoints )
         {
@@ -323,9 +323,9 @@ NavState StateMachine::executeDone()
     return NavState::Done;
 } // executeDone()
 
-// Executes the logic for the turning. If the rover is turned off, it
-// proceeds to Off. If the rover finishes turning, it drives to the
-// next Waypoint. Else the rover keeps turning to the Waypoint.
+// Executes the logic for the turning. If the sinal has been low enough for
+// enough time, turn to drop radio repeater. If the rover finishes turning,
+// it drives to the next Waypoint. Else the rover keeps turning to the Waypoint.
 NavState StateMachine::executeTurn()
 {
     if( mPhoebe->roverStatus().path().empty() )
@@ -334,6 +334,7 @@ NavState StateMachine::executeTurn()
     }
     // If we should drop a repeater and have not already, add last
     // point where connection was good to front of path and turn
+    lowRadioSignalStrengthTime();
     if ( isAddRepeaterDropPoint() )
     {
         addRepeaterDropPoint();
@@ -357,9 +358,11 @@ NavState StateMachine::executeTurn()
     return NavState::Turn;
 } // executeTurn()
 
-// Executes the logic for driving. If the rover is turned off, it
-// proceeds to Off. If the rover finishes driving, it either starts
-// searching for a target (dependent the search parameter of
+// Executes the logic for driving. If we haven't already dropped the
+// radio repeater and enough iterations have past, update the radio
+// repeater drop point. If the sinal has been low enough for enough
+// time, turn to drop radio repeater. If the rover finishes driving,
+// it either starts searching for a target (dependent the search parameter of
 // the Waypoint) or it turns to the next Waypoint. If the rover
 // detects an obstacle, it goes to turn around it. Else the rover
 // keeps driving to the next Waypoint.
@@ -367,6 +370,12 @@ NavState StateMachine::executeDrive()
 {
     const Waypoint& nextWaypoint = mPhoebe->roverStatus().path().front();
     double distance = estimateNoneuclid( mPhoebe->roverStatus().odometry(), nextWaypoint.odom );
+
+    if ( !mRepeaterDropComplete )
+    {
+        lowRadioSignalStrengthTime();
+        updateRepeaterDropWaypoint();
+    }
 
     // If we should drop a repeater and have not already, add last
     // point where connection was good to front of path and turn
@@ -480,37 +489,86 @@ double StateMachine::getOptimalAvoidanceDistance() const
     return mPhoebe->roverStatus().obstacle().distance + mRoverConfig[ "navThresholds" ][ "waypointDistance" ].GetDouble();
 } // optimalAvoidanceAngle()
 
+// Returns if the waypoint is reachable without any avoidance.
 bool StateMachine::isWaypointReachable( double distance )
 {
     return isLocationReachable( mPhoebe, mRoverConfig, distance, mRoverConfig["navThresholds"]["waypointDistance"].GetDouble());
-} // isWaypointReachable
-
-// If we have not already begun to drop radio repeater
-//  (RadioRepeaterTurn or RadioRepeaterDrive)
-// We should drop the repeater
-// and we haven't already dropped one
-bool StateMachine::isAddRepeaterDropPoint() const
-{
-
-    return ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterTurn &&
-             mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterDrive &&
-             mPhoebe->isTimeToDropRepeater() &&
-             mRepeaterDropComplete == false );
-} //isAddRepeaterDropPoint
+} // isWaypo
 
 // Returns whether or not to enter RadioRepeaterTurn state.
+// If we have not already begun to drop radio repeater
+// (RadioRepeaterTurn or RadioRepeaterDrive), it is time to drop the
+// repeater and we haven't already dropped one, then it's time to drop.
+bool StateMachine::isAddRepeaterDropPoint() const
+{
+    return ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterTurn &&
+             mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterDrive &&
+             mIsTimeToDropRepeater &&
+             !mRepeaterDropComplete );
+} //isAddRepeaterDropPoint
+
+// Add the repeater drop point to the front of the path.
 void StateMachine::addRepeaterDropPoint()
 {
-    // TODO: signal drops before first completed waypoint
-    // Get last waypoint in path (where signal was good) and set search and gate
-    // to false in order to not repeat search
-    Waypoint way = (mPhoebe->roverStatus().course().waypoints)[mCompletedWaypoints-1];
-    way.search = false;
-    way.gate = false;
-
-    mPhoebe->roverStatus().path().push_front(way);
+    mRepeaterDropWaypoint.search = false;
+    mRepeaterDropWaypoint.gate = false;
+    mPhoebe->roverStatus().path().push_front(mRepeaterDropWaypoint);
 } // addRepeaterDropPoint
 
+// Executes the logic start counting number of iterations for how long it's been
+// since the rover has gotten a strong radio signal. If the signal drops
+// below the signalStrengthCutOff and the counting hasn't started, begin counting
+// iterations. Otherwise, the signal is good so the counting should be stopped.
+void StateMachine::updateRepeaterDropWaypoint()
+{
+    static unsigned int iterations = 0;
+
+    // If we haven't already dropped a repeater
+    // and our signal is above the threshold, start the iteration count
+    if( !mIsTimeToDropRepeater &&
+        !mRepeaterDropComplete &&
+        mPhoebe->roverStatus().radioSignal().signal_strength >
+        mRoverConfig[ "radioRepeaterThresholds" ][ "signalStrengthCutOff" ].GetDouble())
+    {
+        iterations += 1;
+    }
+
+    double numIterations = mRoverConfig[ "radioRepeaterThresholds" ][ "numIterationsUpdateRepeaterDropOdom" ].GetDouble();
+    if( iterations >= numIterations )
+    {
+        iterations = 0;
+        mRepeaterDropWaypoint.odom = mPhoebe->roverStatus().odometry();
+    }
+} // updateRepeaterDropWaypoint
+
+// Executes the logic starting the clock to time how long it's been
+// since the rover has gotten a strong radio signal. If the signal drops
+// below the signalStrengthCutOff and the timer hasn't started, begin the clock.
+// Otherwise, the signal is good so the timer should be stopped.
+void StateMachine::lowRadioSignalStrengthTime()
+{
+    static bool started = false;
+    static time_t startTime;
+
+    // If we are not in off or done state, do not start timer.
+    // Also if we have not dropped a repeater, the time hasn't already started
+    // and our signal is below the threshold, start the timer
+    if( !mRepeaterDropComplete &&
+        !started &&
+        mPhoebe->roverStatus().radioSignal().signal_strength <=
+        mRoverConfig[ "radioRepeaterThresholds" ][ "signalStrengthCutOff" ].GetDouble())
+    {
+        startTime = time( nullptr );
+        started = true;
+    }
+
+    double waitTime = mRoverConfig[ "radioRepeaterThresholds" ][ "lowSignalWaitTime" ].GetDouble();
+    if( started && difftime( time( nullptr ), startTime ) > waitTime )
+    {
+        started = false;
+        mIsTimeToDropRepeater = true;
+    }
+} // lowRadioSignalStrengthTime
 
 // TODOS:
 // [drive to target] obstacle and target
