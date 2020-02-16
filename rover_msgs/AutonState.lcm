@@ -2,4 +2,5 @@ package rover_msgs;
 
 struct AutonState {
 	boolean is_auton;
+	boolean is_done;
 }

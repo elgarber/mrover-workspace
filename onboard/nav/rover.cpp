@@ -11,6 +11,7 @@ Rover::RoverStatus::RoverStatus()
     : mCurrentState( NavState::Off )
 {
     mAutonState.is_auton = false;
+    mAutonState.is_done = false;
 } // RoverStatus()
 
 // Gets a reference to the rover's current navigation state.
