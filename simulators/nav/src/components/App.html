@@ -399,7 +399,8 @@
             start_odom_events: function() {
                 window.setInterval(() => {
                     this.fire("auton", {
-                        is_auton: this.get('enabled')
+                        is_auton: this.get('enabled'),
+                        is_done: this.get('nav_state_name') === "Done",
                     });
                     const odom = this.get("odom");
                     this.fire("imu", {

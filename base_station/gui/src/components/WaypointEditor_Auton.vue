@@ -95,6 +95,7 @@ export default {
         total_wps: 0
       },
 
+      leg_completed: false,
       repeater_dropped: false,
 
       storedWaypoints: [],
@@ -115,9 +116,10 @@ export default {
     interval = window.setInterval(() => {
         if(this.auton_enabled && this.nav_status.nav_state_name === 'Done'){
           this.$refs.checkbox.toggleAndEmit()
+          this.leg_completed = true;
         }
 
-        this.$parent.publish('/auton', {type: 'AutonState', is_auton: this.auton_enabled})
+        this.$parent.publish('/auton', {type: 'AutonState', is_auton: this.auton_enabled, is_done: this.leg_completed })
 
         let course = {
             num_waypoints: this.route.length,
@@ -211,7 +213,8 @@ export default {
     },
 
     toggleAutonMode: function (val) {
-      this.setAutonMode(val)
+      this.setAutonMode(val);
+      this.leg_completed = false;
     }
   },
 

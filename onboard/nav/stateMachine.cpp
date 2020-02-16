@@ -304,7 +304,6 @@ NavState StateMachine::executeOff()
         mCompletedWaypoints = 0;
         mTotalWaypoints = mPhoebe->roverStatus().course().num_waypoints;
         mRepeaterDropWaypoint.odom = mPhoebe->roverStatus().odometry();
-
         if( !mTotalWaypoints )
         {
             return NavState::Done;
