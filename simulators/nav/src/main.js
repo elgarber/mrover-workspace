@@ -99,7 +99,7 @@ app.on("obstacle", (obstacle) => {
 app.on("radio", (signal) => {
     if (bridge.online) {
         signal.type = 'RadioSignalStrength';
-        bridge.publish("/radio", signal);
+        bridge.publish("/radio_update", signal);
     }
 })
 

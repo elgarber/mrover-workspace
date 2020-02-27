@@ -400,6 +400,7 @@ NavState StateMachine::executeDrive()
     if ( isAddRepeaterDropPoint() )
     {
         addRepeaterDropPoint();
+        mIsDropState = true; // entering a drop state
         return NavState::RadioRepeaterTurn;
     }
 
@@ -531,7 +532,7 @@ bool StateMachine::isAddRepeaterDropPoint() const
 {
     return ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterTurn &&
              mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterDrive &&
-             mIsDropState &&
+             mIsTimeToDropRepeater &&
              !mRepeaterDropComplete );
 } //isAddRepeaterDropPoint
 

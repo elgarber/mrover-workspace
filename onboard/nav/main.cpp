@@ -108,7 +108,7 @@ int main()
     lcmObject.subscribe( "/course", &LcmHandlers::course, &lcmHandlers );
     lcmObject.subscribe( "/obstacle", &LcmHandlers::obstacle, &lcmHandlers );
     lcmObject.subscribe( "/odometry", &LcmHandlers::odometry, &lcmHandlers );
-    lcmObject.subscribe( "/radio", &LcmHandlers::radioSignalStrength, &lcmHandlers );
+    lcmObject.subscribe( "/radio_update", &LcmHandlers::radioSignalStrength, &lcmHandlers );
     lcmObject.subscribe( "/rr_drop_complete", &LcmHandlers::repeaterDropComplete, &lcmHandlers );
     lcmObject.subscribe( "/target_list", &LcmHandlers::targetList, &lcmHandlers );
 
