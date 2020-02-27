@@ -25,6 +25,8 @@ StateMachine::StateMachine( lcm::LCM& lcmObject )
     , mTotalWaypoints( 0 )
     , mCompletedWaypoints( 0 )
     , mRepeaterDropComplete ( false )
+    , mIsTimeToDropRepeater ( false )
+    , mIsDropState ( false )
     , mStateChanged( true )
 {
     ifstream configFile;
@@ -333,10 +335,11 @@ NavState StateMachine::executeTurn()
     }
     // If we should drop a repeater and have not already, add last
     // point where connection was good to front of path and turn
-    lowRadioSignalStrengthTime();
+    countTimeSinceStrongSignal();
     if ( isAddRepeaterDropPoint() )
     {
         addRepeaterDropPoint();
+        mIsDropState = true; // entering drop state
         return NavState::RadioRepeaterTurn;
     }
 
@@ -372,7 +375,7 @@ NavState StateMachine::executeDrive()
 
     if ( !mRepeaterDropComplete )
     {
-        lowRadioSignalStrengthTime();
+        countTimeSinceStrongSignal();
         updateRepeaterDropWaypoint();
     }
 
@@ -434,6 +437,7 @@ NavState StateMachine::executeRepeaterDropWait( )
 
     if( mRepeaterDropComplete )
     {
+        mIsDropState = false; // leaving drop state
         return NavState::Turn;
     }
     return NavState::RepeaterDropWait;
@@ -502,7 +506,7 @@ bool StateMachine::isAddRepeaterDropPoint() const
 {
     return ( mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterTurn &&
              mPhoebe->roverStatus().currentState() != NavState::RadioRepeaterDrive &&
-             mIsTimeToDropRepeater &&
+             mIsDropState &&
              !mRepeaterDropComplete );
 } //isAddRepeaterDropPoint
 
@@ -522,17 +526,16 @@ void StateMachine::updateRepeaterDropWaypoint()
 {
     static unsigned int iterations = 0;
 
-    // If we haven't already dropped a repeater
-    // and our signal is above the threshold, start the iteration count
-    if( !mIsTimeToDropRepeater &&
-        !mRepeaterDropComplete &&
-        mPhoebe->roverStatus().radioSignal().signal_strength >
+    // start the iteration count if
+    if( !mIsDropState && // we are not in the process of dropping a repeater
+        !mRepeaterDropComplete && // we haven't already dropped one
+        mPhoebe->roverStatus().radioSignal().signal_strength > // and signal is above the threshold
         mRoverConfig[ "radioRepeaterThresholds" ][ "signalStrengthCutOff" ].GetDouble())
     {
         iterations += 1;
     }
 
-    double numIterations = mRoverConfig[ "radioRepeaterThresholds" ][ "numIterationsUpdateRepeaterDropOdom" ].GetDouble();
+    double numIterations = mRoverConfig[ "radioRepeaterThresholds" ][ "numIterToUpdateRepeaterDropOdom" ].GetDouble();
     if( iterations >= numIterations )
     {
         iterations = 0;
@@ -544,7 +547,7 @@ void StateMachine::updateRepeaterDropWaypoint()
 // since the rover has gotten a strong radio signal. If the signal drops
 // below the signalStrengthCutOff and the timer hasn't started, begin the clock.
 // Otherwise, the signal is good so the timer should be stopped.
-void StateMachine::lowRadioSignalStrengthTime()
+void StateMachine::countTimeSinceStrongSignal()
 {
     static bool started = false;
     static time_t startTime;
@@ -567,7 +570,7 @@ void StateMachine::lowRadioSignalStrengthTime()
         started = false;
         mIsTimeToDropRepeater = true;
     }
-} // lowRadioSignalStrengthTime
+} // countTimeSinceStrongSignal
 
 // TODOS:
 // [drive to target] obstacle and target

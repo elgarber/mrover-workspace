@@ -52,7 +52,7 @@
 	{
 		"signalStrengthCutOff": 30.0,
 		"lowSignalWaitTime": 2,
-		"numIterationsUpdateRepeaterDropOdom": 5
+		"numIterToUpdateRepeaterDropOdom": 5
 	},
 
 	"search":

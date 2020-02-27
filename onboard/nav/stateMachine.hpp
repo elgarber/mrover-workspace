@@ -90,7 +90,7 @@ private:
 
     void updateRepeaterDropWaypoint();
 
-    void lowRadioSignalStrengthTime();
+    void countTimeSinceStrongSignal();
 
     /*************************************************************************/
     /* Private Member Variables */
@@ -114,10 +114,13 @@ private:
     unsigned mCompletedWaypoints;
 
     // Bool of whether radio repeater has been dropped.
-    bool mRepeaterDropComplete = false;
+    bool mRepeaterDropComplete;
 
     // Bool of whether it is time to drop repeater.
-    bool mIsTimeToDropRepeater = false;
+    bool mIsTimeToDropRepeater;
+
+    // Bool of whether we are currently dropping the repeater.
+    bool mIsDropState;
 
     // Waypoint object for radio repeater drop.
     Waypoint mRepeaterDropWaypoint;
